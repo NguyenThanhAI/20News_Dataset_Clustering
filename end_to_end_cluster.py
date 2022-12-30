@@ -11,10 +11,14 @@ from nltk import word_tokenize
 import nltk
 #Stop words present in the library
 stopwords = nltk.corpus.stopwords.words('english')
-from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.feature_extraction.text import TfidfVectorizer, HashingVectorizer, TfidfTransformer
 from sklearn.cluster import KMeans
 from sklearn import cluster
 from sklearn import metrics
+
+from sklearn.decomposition import TruncatedSVD
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import Normalizer
 
 def enumrate_files_by_group(data_dir: str):
     files_list = []
@@ -209,6 +213,73 @@ if __name__ == "__main__":
     print("Test V-measure: {}".format(metrics.v_measure_score(test_groundtruth, predict_test)))
     print("Test Adjusted Rand-Index: {}".format(metrics.adjusted_rand_score(test_groundtruth, predict_test)))
     print("Test Silhouette Coefficient: {}".format(metrics.silhouette_score(test_vectors, predict_test, sample_size=5000)))
+    
+    lsa = make_pipeline(TruncatedSVD(n_components=100), Normalizer(copy=False))
+    
+    lsa_train_vectors = lsa.fit_transform(train_vectors)
+    lsa_test_vectors = lsa.fit_transform(test_vectors)
+    
+    print(lsa_train_vectors.shape)
+    print(lsa_test_vectors.shape)
+    
+    clustering = KMeans(n_clusters=20, init='k-means++', max_iter=100, random_state=100)
+    #clustering = cluster.BisectingKMeans(n_clusters=20, init='k-means++', max_iter=100, random_state=100)
+    clustering.fit(lsa_train_vectors)
+    
+    print(clustering.labels_)
+    
+    predict_test = clustering.predict(lsa_test_vectors)
+    #predict_test = clustering.fit_predict(test_vectors)
+    print(predict_test)
+    
+    print("LSA Train Homogeneity: {}".format(metrics.homogeneity_score(train_groundtruth, clustering.labels_)))
+    print("LSA Train Completeness: {}".format(metrics.completeness_score(train_groundtruth, clustering.labels_)))
+    print("LSA Train V-measure: {}".format(metrics.v_measure_score(train_groundtruth, clustering.labels_)))
+    print("LSA Train Adjusted Rand-Index: {}".format(metrics.adjusted_rand_score(train_groundtruth, clustering.labels_)))
+    print("LSA Train Silhouette Coefficient: {}".format(metrics.silhouette_score(lsa_train_vectors, clustering.labels_, sample_size=5000)))
+    
+    print("LSA Test Homogeneity: {}".format(metrics.homogeneity_score(test_groundtruth, predict_test)))
+    print("LSA Test Completeness: {}".format(metrics.completeness_score(test_groundtruth, predict_test)))
+    print("LSA Test V-measure: {}".format(metrics.v_measure_score(test_groundtruth, predict_test)))
+    print("LSA Test Adjusted Rand-Index: {}".format(metrics.adjusted_rand_score(test_groundtruth, predict_test)))
+    print("LSA Test Silhouette Coefficient: {}".format(metrics.silhouette_score(lsa_test_vectors, predict_test, sample_size=5000)))
+    
+    lsa_vectorizer = make_pipeline(
+    HashingVectorizer(stop_words="english", n_features=50_000, tokenizer=lambda x: x, preprocessor=lambda x: x),
+    TfidfTransformer(),
+    TruncatedSVD(n_components=100, random_state=0),
+    Normalizer(copy=False),
+    )
+    
+    hashed_lsa_train_vectors = lsa_vectorizer.fit_transform(train_documents)
+    
+    print(hashed_lsa_train_vectors.shape)
+    
+    hashed_lsa_test_vectors = lsa_vectorizer.fit_transform(test_documents)
+    
+    print(hashed_lsa_test_vectors.shape)
+    
+    clustering = KMeans(n_clusters=20, init='k-means++', max_iter=100, random_state=100)
+    #clustering = cluster.BisectingKMeans(n_clusters=20, init='k-means++', max_iter=100, random_state=100)
+    clustering.fit(hashed_lsa_train_vectors)
+    
+    print(clustering.labels_)
+    
+    predict_test = clustering.predict(hashed_lsa_test_vectors)
+    #predict_test = clustering.fit_predict(test_vectors)
+    print(predict_test)
+    
+    print("Hased LSA Train Homogeneity: {}".format(metrics.homogeneity_score(train_groundtruth, clustering.labels_)))
+    print("Hased LSA Train Completeness: {}".format(metrics.completeness_score(train_groundtruth, clustering.labels_)))
+    print("Hased LSA Train V-measure: {}".format(metrics.v_measure_score(train_groundtruth, clustering.labels_)))
+    print("Hased LSA Train Adjusted Rand-Index: {}".format(metrics.adjusted_rand_score(train_groundtruth, clustering.labels_)))
+    print("Hased LSA Train Silhouette Coefficient: {}".format(metrics.silhouette_score(hashed_lsa_train_vectors, clustering.labels_, sample_size=5000)))
+    
+    print("Hashed LSA Test Homogeneity: {}".format(metrics.homogeneity_score(test_groundtruth, predict_test)))
+    print("Hashed LSA Test Completeness: {}".format(metrics.completeness_score(test_groundtruth, predict_test)))
+    print("Hashed LSA Test V-measure: {}".format(metrics.v_measure_score(test_groundtruth, predict_test)))
+    print("Hashed LSA Test Adjusted Rand-Index: {}".format(metrics.adjusted_rand_score(test_groundtruth, predict_test)))
+    print("Hashed LSA Test Silhouette Coefficient: {}".format(metrics.silhouette_score(hashed_lsa_test_vectors, predict_test, sample_size=5000)))
     
     '''# TfIdf
     
